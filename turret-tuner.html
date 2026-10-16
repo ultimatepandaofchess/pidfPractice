@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Turret Tuner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: engineering bench. Controls rail on the left, scope-style chart and turret dial on the right; stacks on phones. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#15202b; --muted:#5a6876; --line:#d5dbe2; --grid:#e6eaef;
+  --accent:#d9520a; --accent-soft:#fbe7db; --target:#3b5b7a; --band:rgba(59,91,122,0.11);
+  --pass:#1f7a4d; --pass-bg:#e1f1e8; --miss:#b4371f; --miss-bg:#f8e4de;
+  --display:"Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1319; --surface:#151d26; --ink:#e7edf3; --muted:#94a2b1; --line:#283442; --grid:#1d2733;
+  --accent:#ff7d36; --accent-soft:#3a2214; --target:#8fb3d6; --band:rgba(143,179,214,0.13);
+  --pass:#62d29d; --pass-bg:#15372a; --miss:#ff8b70; --miss-bg:#3d1d16; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1319; --surface:#151d26; --ink:#e7edf3; --muted:#94a2b1; --line:#283442; --grid:#1d2733;
+  --accent:#ff7d36; --accent-soft:#3a2214; --target:#8fb3d6; --band:rgba(143,179,214,0.13);
+  --pass:#62d29d; --pass-bg:#15372a; --miss:#ff8b70; --miss-bg:#3d1d16; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:600;font-size:30px;letter-spacing:0.01em;margin:0;line-height:1.1}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);margin:4px 0 0;max-width:62ch}
+.label{font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.gain{display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:4px 10px;align-items:center}
+.gain .name{font-family:var(--mono);font-weight:500;font-size:14px}
+.gain .what{grid-column:1 / -1;color:var(--muted);font-size:12.5px;margin-top:-4px}
+.gain input[type=range]{grid-column:1 / 2;width:100%;accent-color:var(--accent)}
+.gain input[type=number]{font-family:var(--mono);font-size:13px;width:84px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 13px var(--body);padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.chip:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 13px var(--body);padding:7px 12px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.desc{color:var(--muted);font-size:13px;margin:0}
+.specs{font-family:var(--mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+.right{display:flex;flex-direction:column;gap:18px;min-width:0}
+.scope{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:16px;align-items:start}
+@media (max-width:620px){.scope{grid-template-columns:minmax(0,1fr)}}
+.readout{font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px;font-variant-numeric:tabular-nums}
+.readout b{color:var(--ink);font-weight:500}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+#chart{width:100%;height:360px;display:block;touch-action:none;cursor:crosshair}
+.dialbox{display:flex;flex-direction:column;gap:10px;align-items:center}
+#dial{width:190px;height:190px;display:block}
+.dialbox .err{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.scrub{display:flex;gap:10px;align-items:center;width:100%}
+.scrub input{flex:1;accent-color:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.tile .v{font-family:var(--mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.tile .g{font-size:12px;color:var(--muted)}
+.pill{align-self:flex-start;font:600 11px var(--body);letter-spacing:0.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-top:4px}
+.pill.pass{background:var(--pass-bg);color:var(--pass)}
+.pill.miss{background:var(--miss-bg);color:var(--miss)}
+.score{font-family:var(--display);font-weight:600;font-size:18px}
+.hints{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.hints li{max-width:70ch}
+.note{color:var(--muted);font-size:13px;max-width:80ch;margin:0}
+</style>
+<style>[hidden]{display:none!important} body{margin:0} img{max-width:100%}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Turret <span>Tuner</span></h1>
+      <p class="sub">Practice tuning a turret PIDF before you touch the robot. Move the gains, watch the turret chase the goal, and try to hit every target.</p>
+    </div>
+    <button class="btn" id="reset" type="button">Reset to starting gains</button>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Controls">
+      <div class="label">Gains</div>
+      <div id="gains" style="display:flex;flex-direction:column;gap:14px"></div>
+      <hr>
+      <div class="label">Scenario</div>
+      <div class="chips" id="scenarios" role="group" aria-label="Scenario"></div>
+      <p class="desc" id="scenDesc"></p>
+      <hr>
+      <div class="label">Turret</div>
+      <div class="chips" role="group" aria-label="Turret">
+        <button class="chip" id="plantPractice" type="button" aria-pressed="true">Practice turret</button>
+        <button class="chip" id="plantMystery" type="button" aria-pressed="false">Mystery turret</button>
+      </div>
+      <div class="row" id="mysteryRow" hidden>
+        <button class="btn" id="newMystery" type="button">New mystery turret</button>
+        <button class="btn" id="reveal" type="button">Reveal specs</button>
+      </div>
+      <div class="specs" id="specs"></div>
+    </section>
+
+    <div class="right">
+      <section class="panel" aria-label="Simulation">
+        <div class="head">
+          <div class="legend">
+            <span><i style="border-top-style:dashed;border-color:var(--target)"></i>Goal angle</span>
+            <span><i style="border-color:var(--accent)"></i>Turret angle</span>
+            <span><i style="border-color:var(--muted);border-top-width:1.5px"></i>Motor power</span>
+          </div>
+        </div>
+        <div class="scope">
+          <div style="min-width:0;display:flex;flex-direction:column;gap:8px">
+            <canvas id="chart" role="img" aria-label="Goal angle and turret angle over 4 seconds, with motor power below"></canvas>
+            <div class="readout" id="readout"></div>
+          </div>
+          <div class="dialbox">
+            <canvas id="dial" role="img" aria-label="Top-down view of the turret pointing at the goal"></canvas>
+            <div class="err" id="dialErr"></div>
+            <div class="scrub">
+              <button class="btn primary" id="play" type="button">Play</button>
+              <input type="range" id="scrub" min="0" max="4" step="0.02" value="0" aria-label="Time">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Results">
+        <div class="head"><div class="label">Goals</div><div class="score" id="scoreText"></div></div>
+        <div class="tiles" id="tiles"></div>
+        <div class="label">Coach</div>
+        <ul class="hints" id="hints"></ul>
+      </section>
+
+      <p class="note">This turret is pretend: it has made-up speed, lag and friction, and the controller here runs the same math as your <code>PidfController</code> (D on target speed minus turret speed, Kv times the goal's speed, Kstatic toward the goal). Gains are per degree; your code works in radians, so real numbers will be different. Use this to build the instinct, then tune on the robot.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const T=4, DT=0.02, TOL=1;
+const GAINS=[
+ {id:'kp',name:'Kp',max:0.1,step:0.001,def:0.03,dec:3,what:'Push harder the farther off it is'},
+ {id:'ki',name:'Ki',max:0.1,step:0.001,def:0,dec:3,what:'Extra push after being off for a while'},
+ {id:'kd',name:'Kd',max:0.008,step:0.0001,def:0,dec:4,what:'Brakes when it moves faster than the goal'},
+ {id:'kv',name:'Kv (F)',max:0.008,step:0.0001,def:0,dec:4,what:'Up-front push for how fast the goal moves'},
+ {id:'ks',name:'Kstatic',max:0.2,step:0.005,def:0,dec:3,what:'Small nudge toward the goal to beat friction'}
+];
+const SCEN={
+ combo:{name:'Jump then turn',desc:'The goal jumps to 90°, then starts sweeping at 45°/s at 2 s, like the robot turning while you aim.',
+   target:t=>t<0.25?{p:0,v:0}:t<2?{p:90,v:0}:{p:90+45*(t-2),v:45},
+   phases:[{k:'step',t0:0.25,t1:2,to:90,dir:1},{k:'track',t0:2,t1:T}],dist:()=>0},
+ step:{name:'Jump',desc:'The goal jumps from 0° to 90° and stays there.',
+   target:t=>({p:t<0.25?0:90,v:0}),phases:[{k:'step',t0:0.25,t1:T,to:90,dir:1}],dist:()=>0},
+ track:{name:'Robot turning',desc:'The goal sweeps at 60°/s for 2 s, then stops at 120°.',
+   target:t=>t<0.25?{p:0,v:0}:t<2.25?{p:60*(t-0.25),v:60}:{p:120,v:0},
+   phases:[{k:'track',t0:0.25,t1:2.25},{k:'step',t0:2.25,t1:T,to:120,dir:1,late:true}],dist:()=>0},
+ bump:{name:'Bump',desc:'The goal jumps to 90°. At 2 s another robot knocks the turret sideways.',
+   target:t=>({p:t<0.25?0:90,v:0}),phases:[{k:'step',t0:0.25,t1:2,to:90,dir:1},{k:'bump',t0:2,t1:T}],
+   dist:t=>(t>=2&&t<2.08)?-3000:0}
+};
+const PRACTICE={maxSpd:360,tau:0.15,fric:0.05};
+const store={get(k){try{return JSON.parse(localStorage.getItem('tt-'+k))}catch(e){return null}},set(k,v){try{localStorage.setItem('tt-'+k,JSON.stringify(v))}catch(e){}}};
+
+let g={}; GAINS.forEach(x=>g[x.id]=x.def);
+const saved=store.get('gains'); if(saved) GAINS.forEach(x=>{if(typeof saved[x.id]==='number')g[x.id]=saved[x.id]});
+let scen=store.get('scen'); if(!SCEN[scen]) scen='combo';
+let plant=PRACTICE, mode='practice', mysteryN=0, revealed=false;
+let sim=null, an=null, tCur=1.0, playing=false;
+
+const $=id=>document.getElementById(id);
+const fmt=(v,d)=>Number(v).toFixed(d);
+
+// ---------- controls ----------
+const gainsEl=$('gains');
+GAINS.forEach(x=>{
+  const d=document.createElement('div'); d.className='gain';
+  d.innerHTML=`<label class="name" for="${x.id}">${x.name}</label><span></span>
+   <input type="range" id="${x.id}" min="0" max="${x.max}" step="${x.step}" aria-describedby="${x.id}-w">
+   <input type="number" id="${x.id}-n" min="0" step="${x.step}" aria-label="${x.name} value">
+   <div class="what" id="${x.id}-w">${x.what}</div>`;
+  gainsEl.appendChild(d);
+  const r=d.querySelector('input[type=range]'), n=d.querySelector('input[type=number]');
+  r.addEventListener('input',()=>{g[x.id]=parseFloat(r.value);n.value=fmt(g[x.id],x.dec);changed()});
+  n.addEventListener('change',()=>{let v=parseFloat(n.value);if(!isFinite(v)||v<0)v=0;g[x.id]=v;r.value=Math.min(v,x.max);n.value=fmt(v,x.dec);changed()});
+});
+function syncInputs(){GAINS.forEach(x=>{$(x.id).value=Math.min(g[x.id],x.max);$(x.id+'-n').value=fmt(g[x.id],x.dec)})}
+
+const scEl=$('scenarios');
+Object.keys(SCEN).forEach(k=>{
+  const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=SCEN[k].name;b.dataset.k=k;
+  b.addEventListener('click',()=>{scen=k;store.set('scen',k);changed()});scEl.appendChild(b);
+});
+
+$('reset').addEventListener('click',()=>{GAINS.forEach(x=>g[x.id]=x.def);syncInputs();changed()});
+$('plantPractice').addEventListener('click',()=>{mode='practice';plant=PRACTICE;changed()});
+$('plantMystery').addEventListener('click',()=>{if(mode!=='mystery'){mode='mystery';newMystery()}});
+$('newMystery').addEventListener('click',newMystery);
+$('reveal').addEventListener('click',()=>{revealed=!revealed;renderSpecs()});
+function newMystery(){
+  const r=(a,b)=>a+Math.random()*(b-a);
+  plant={maxSpd:Math.round(r(240,520)),tau:+r(0.07,0.26).toFixed(2),fric:+r(0.02,0.13).toFixed(3)};
+  mysteryN++;revealed=false;changed();
+}
+function renderSpecs(){
+  $('plantPractice').setAttribute('aria-pressed',mode==='practice');
+  $('plantMystery').setAttribute('aria-pressed',mode==='mystery');
+  $('mysteryRow').hidden=mode!=='mystery';
+  $('reveal').textContent=revealed?'Hide specs':'Reveal specs';
+  const s=`Top speed ${plant.maxSpd}°/s · response lag ${plant.tau.toFixed(2)} s · friction ${plant.fric.toFixed(3)} power`;
+  $('specs').textContent=mode==='practice'?s:(revealed?`Mystery turret ${mysteryN}: `+s:`Mystery turret ${mysteryN}. Specs hidden. Tune it by watching the graph.`);
+}
+
+// ---------- simulation (same math as PidfController) ----------
+function simulate(){
+  const S=SCEN[scen]; let pos=0,vel=0,integ=0,lastPos=NaN; const rec=[];
+  const steps=Math.round(T/DT), sub=20, h=DT/sub;
+  for(let k=0;k<=steps;k++){
+    const t=k*DT, tg=S.target(t);
+    const mv=isNaN(lastPos)?0:(pos-lastPos)/DT; lastPos=pos;
+    const err=tg.p-pos; integ+=err*DT;
+    let p=g.kp*err+g.ki*integ+g.kd*(tg.v-mv)+g.kv*tg.v;
+    if(Math.abs(err)>TOL)p+=Math.sign(err)*g.ks;
+    p=Math.max(-1,Math.min(1,p)); if(!isFinite(p))p=0;
+    rec.push({t,target:tg.p,tv:tg.v,pos,power:p});
+    for(let j=0;j<sub;j++){
+      const tt=t+j*h, d=S.dist(tt);
+      const eff=Math.abs(p)>plant.fric?Math.sign(p)*(Math.abs(p)-plant.fric):0;
+      vel+=((plant.maxSpd*eff-vel)/plant.tau+d)*h;
+      if(eff===0&&d===0&&Math.abs(vel)<2)vel=0;
+      pos+=vel*h;
+    }
+  }
+  return rec;
+}
+function settleIn(rs,t0){let last=-1;rs.forEach((r,i)=>{if(Math.abs(r.target-r.pos)>2)last=i});
+  if(last===rs.length-1)return Infinity;return last<0?0:rs[last+1].t-t0}
+function analyze(rec){
+  const S=SCEN[scen], at=(a,b)=>rec.filter(r=>r.t>=a-1e-9&&r.t<b-1e-9);
+  let overshoot=null,settle=null,lag=null,recovery=null,osc=0,first=true;
+  for(const ph of S.phases){
+    const rs=at(ph.t0,ph.t1);
+    if(ph.k==='step'){
+      const os=Math.max(0,...rs.map(r=>(r.pos-ph.to)*ph.dir));overshoot=Math.max(overshoot??0,os);
+      if(first){first=false;settle=settleIn(rs,ph.t0);
+        let prev=0;rs.forEach(r=>{const e=r.target-r.pos;if(Math.abs(e)>0.5){const s=Math.sign(e);if(prev&&s!==prev)osc++;prev=s}});}
+    }else if(ph.k==='track'){const s=rs.slice(Math.floor(rs.length*0.4));lag=s.reduce((a,r)=>a+(r.target-r.pos),0)/s.length}
+    else if(ph.k==='bump'){recovery=settleIn(rs,ph.t0)}
+  }
+  let finalErr=null;const lastPh=S.phases[S.phases.length-1];
+  if(lastPh.k!=='track'){const tail=rec.filter(r=>r.t>=T-0.3);finalErr=tail.reduce((a,r)=>a+Math.abs(r.target-r.pos),0)/tail.length}
+  const sat=rec.filter(r=>Math.abs(r.power)>=0.99).length/rec.length;
+  return{overshoot,settle,lag,recovery,finalErr,osc,sat};
+}
+
+// ---------- results ----------
+function renderResults(){
+  const a=an,tiles=[];
+  const sec=v=>v===Infinity?'never':fmt(v,2)+' s';
+  if(a.settle!==null)tiles.push({l:'Time to reach goal',v:sec(a.settle),goal:'within 2° by 0.6 s',ok:a.settle<=0.6});
+  if(a.overshoot!==null)tiles.push({l:'Overshoot',v:fmt(a.overshoot,1)+'°',goal:'5° or less',ok:a.overshoot<=5});
+  if(a.lag!==null)tiles.push({l:'Lag while tracking',v:fmt(a.lag,1)+'°',goal:'within ±3°',ok:Math.abs(a.lag)<=3});
+  if(a.recovery!==null)tiles.push({l:'Recovery from bump',v:sec(a.recovery),goal:'back within 2° by 0.5 s',ok:a.recovery<=0.5});
+  if(a.finalErr!==null)tiles.push({l:'Final error',v:fmt(a.finalErr,1)+'°',goal:'1° or less',ok:a.finalErr<=1});
+  $('tiles').innerHTML=tiles.map(x=>`<div class="tile"><div class="label">${x.l}</div><div class="v">${x.v}</div><div class="g">Goal: ${x.goal}</div><span class="pill ${x.ok?'pass':'miss'}">${x.ok?'Pass':'Miss'}</span></div>`).join('');
+  const n=tiles.filter(x=>x.ok).length;$('scoreText').textContent=`${n} of ${tiles.length} met`;
+
+  const h=[];
+  if(a.osc>=3)h.push('It keeps wobbling back and forth past the goal. Lower Kp a little, or raise Kd to calm it down.');
+  else if(a.overshoot>5)h.push(g.ki>0.02?'It shoots past the goal. Ki can cause that, so try lowering it, or raise Kd.':'It shoots past the goal. Raise Kd a little, or lower Kp.');
+  if(a.finalErr!==null&&a.finalErr>1)h.push(g.ks<0.02?'It stops short of the goal because friction wins at small power. Raise Kstatic, or add a little Ki.':'It still stops a bit short. Add a little Ki to clean up the last bit.');
+  else if(a.settle!==null&&a.settle>0.6&&a.overshoot<=5&&a.osc<3)h.push('It gets to the goal slowly. Raise Kp.');
+  if(a.lag!==null){if(a.lag>3)h.push(g.kv<0.0005?'It falls behind the moving goal. Raise Kv: that is the push for the goal\'s speed, given up front.':'Still falling behind the moving goal. Raise Kv a bit more.');
+    else if(a.lag<-3)h.push('It runs ahead of the moving goal. Lower Kv.');}
+  if(a.recovery!==null&&a.recovery>0.5)h.push('It recovers slowly from the bump. Raise Kp, then add Kd if it starts overshooting.');
+  if(a.sat>0.35)h.push('The motor is at full power for a lot of the run, so bigger gains won\'t make it much faster from here.');
+  if(!h.length)h.push(n===tiles.length?'Every goal is met. Try another scenario, or a mystery turret.':'Close. Make small changes, one gain at a time.');
+  $('hints').innerHTML=h.slice(0,3).map(x=>`<li>${x}</li>`).join('');
+}
+
+// ---------- drawing ----------
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function setup(c){const dpr=window.devicePixelRatio||1,w=c.clientWidth,hh=c.clientHeight;
+  if(c.width!==Math.round(w*dpr)||c.height!==Math.round(hh*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(hh*dpr)}
+  const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,hh);return{ctx,w,h:hh}}
+let geom=null;
+function drawChart(){
+  const c=$('chart'),{ctx,w,h}=setup(c);
+  const C={ink:css('--ink'),muted:css('--muted'),grid:css('--grid'),line:css('--line'),acc:css('--accent'),tg:css('--target'),band:css('--band')};
+  const L=46,R=12,top=10,aH=228,pTop=aH+top+24,pH=74;
+  const X=t=>L+t/T*(w-L-R);
+  let lo=Math.min(-10,...sim.map(r=>Math.min(r.pos,r.target)))-5, hi=Math.max(...sim.map(r=>Math.max(r.pos,r.target)))+12;
+  const stp=(hi-lo)>240?60:30; lo=Math.floor(lo/stp)*stp; hi=Math.ceil(hi/stp)*stp;
+  const Y=v=>top+aH-(v-lo)/(hi-lo)*aH, P=v=>pTop+pH/2-v*(pH/2);
+  geom={X,L,R,w,Y,P};
+  ctx.font='11px "IBM Plex Mono", ui-monospace, monospace';ctx.textBaseline='middle';
+  for(let v=lo;v<=hi+1e-9;v+=stp){ctx.strokeStyle=C.grid;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,Y(v)+0.5);ctx.lineTo(w-R,Y(v)+0.5);ctx.stroke();
+    ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.fillText(v+'°',L-6,Y(v))}
+  // tolerance band
+  ctx.fillStyle=C.band;ctx.beginPath();sim.forEach((r,i)=>{const x=X(r.t),y=Y(r.target+2);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  for(let i=sim.length-1;i>=0;i--)ctx.lineTo(X(sim[i].t),Y(sim[i].target-2));ctx.closePath();ctx.fill();
+  // target
+  ctx.strokeStyle=C.tg;ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.lineJoin='round';ctx.beginPath();
+  sim.forEach((r,i)=>{i?ctx.lineTo(X(r.t),Y(r.target)):ctx.moveTo(X(r.t),Y(r.target))});ctx.stroke();ctx.setLineDash([]);
+  // turret
+  ctx.strokeStyle=C.acc;ctx.lineWidth=2.2;ctx.lineCap='round';ctx.beginPath();
+  sim.forEach((r,i)=>{i?ctx.lineTo(X(r.t),Y(r.pos)):ctx.moveTo(X(r.t),Y(r.pos))});ctx.stroke();
+  // power pane
+  ctx.fillStyle=C.muted;ctx.textAlign='right';
+  [1,0,-1].forEach(v=>{ctx.strokeStyle=v===0?C.line:C.grid;ctx.setLineDash(v===0?[]:[3,3]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L,P(v)+0.5);ctx.lineTo(w-R,P(v)+0.5);ctx.stroke();ctx.fillText((v>0?'+':'')+v,L-6,P(v))});
+  ctx.setLineDash([]);ctx.textAlign='left';ctx.fillText('power',L+4,pTop-9);
+  ctx.strokeStyle=C.muted;ctx.lineWidth=1.5;ctx.beginPath();sim.forEach((r,i)=>{i?ctx.lineTo(X(r.t),P(r.power)):ctx.moveTo(X(r.t),P(r.power))});ctx.stroke();
+  // time labels
+  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=C.muted;
+  for(let t=0;t<=T+1e-9;t+=0.5){ctx.fillText(t%1===0?t+' s':t.toFixed(1),X(t),pTop+pH+8)}
+  // cursor
+  const r=at(tCur),x=X(r.t);ctx.strokeStyle=C.ink;ctx.globalAlpha=0.35;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+0.5,top);ctx.lineTo(x+0.5,pTop+pH);ctx.stroke();ctx.globalAlpha=1;
+  const dot=(y,col)=>{ctx.fillStyle=col;ctx.strokeStyle=css('--surface');ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,4.5,0,7);ctx.fill();ctx.stroke()};
+  dot(Y(r.target),C.tg);dot(Y(r.pos),C.acc);dot(P(r.power),C.muted);
+  $('readout').innerHTML=`<span>t <b>${fmt(r.t,2)} s</b></span><span>goal <b>${fmt(r.target,1)}°</b></span><span>turret <b>${fmt(r.pos,1)}°</b></span><span>error <b>${fmt(r.target-r.pos,1)}°</b></span><span>power <b>${fmt(r.power,2)}</b></span>`;
+}
+function at(t){return sim[Math.max(0,Math.min(sim.length-1,Math.round(t/DT)))]}
+function drawDial(){
+  const c=$('dial'),{ctx,w,h}=setup(c),cx=w/2,cy=h/2,rad=Math.min(w,h)/2-18,r=at(tCur);
+  const muted=css('--muted'),line=css('--line'),ink=css('--ink');
+  ctx.strokeStyle=line;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,rad,0,7);ctx.stroke();
+  ctx.font='10px "IBM Plex Mono", ui-monospace, monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let d=0;d<360;d+=30){const a=d*Math.PI/180,o=d%90===0?9:5;ctx.strokeStyle=d%90===0?muted:line;ctx.beginPath();
+    ctx.moveTo(cx+(rad-o)*Math.cos(a),cy-(rad-o)*Math.sin(a));ctx.lineTo(cx+rad*Math.cos(a),cy-rad*Math.sin(a));ctx.stroke();
+    if(d%90===0){ctx.fillStyle=muted;ctx.fillText(d+'°',cx+(rad+11)*Math.cos(a),cy-(rad+11)*Math.sin(a))}}
+  const ta=r.target*Math.PI/180;ctx.strokeStyle=css('--target');ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();
+  ctx.moveTo(cx,cy);ctx.lineTo(cx+rad*Math.cos(ta),cy-rad*Math.sin(ta));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=css('--target');ctx.beginPath();ctx.arc(cx+rad*Math.cos(ta),cy-rad*Math.sin(ta),4.5,0,7);ctx.fill();
+  const pa=r.pos*Math.PI/180;ctx.fillStyle=css('--surface');ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,17,0,7);ctx.fill();ctx.stroke();
+  ctx.strokeStyle=css('--accent');ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(cx+10*Math.cos(pa),cy-10*Math.sin(pa));
+  ctx.lineTo(cx+(rad-14)*Math.cos(pa),cy-(rad-14)*Math.sin(pa));ctx.stroke();
+  ctx.fillStyle=css('--accent');ctx.beginPath();ctx.arc(cx,cy,6,0,7);ctx.fill();
+  $('dialErr').textContent=`aim error ${fmt(r.target-r.pos,1)}°`;
+}
+function draw(){drawChart();drawDial();$('scrub').value=tCur}
+
+// ---------- interaction ----------
+function changed(){
+  store.set('gains',g);
+  scEl.querySelectorAll('.chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===scen));
+  $('scenDesc').textContent=SCEN[scen].desc;renderSpecs();
+  sim=simulate();an=analyze(sim);renderResults();draw();
+}
+$('scrub').addEventListener('input',e=>{stop();tCur=parseFloat(e.target.value);draw()});
+$('chart').addEventListener('pointermove',e=>{if(playing||!geom)return;const b=e.currentTarget.getBoundingClientRect(),x=e.clientX-b.left;
+  tCur=Math.max(0,Math.min(T,(x-geom.L)/(geom.w-geom.L-geom.R)*T));draw()});
+let raf=0,lastTs=0;
+function stop(){playing=false;cancelAnimationFrame(raf);$('play').textContent='Play'}
+$('play').addEventListener('click',()=>{if(playing){stop();return}
+  if(tCur>=T-0.01)tCur=0;playing=true;$('play').textContent='Pause';lastTs=0;
+  const step=ts=>{if(!playing)return;if(lastTs)tCur+=(ts-lastTs)/1000;lastTs=ts;if(tCur>=T){tCur=T;draw();stop();return}draw();raf=requestAnimationFrame(step)};
+  raf=requestAnimationFrame(step)});
+new ResizeObserver(()=>sim&&draw()).observe($('chart'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>sim&&draw());
+new MutationObserver(()=>sim&&draw()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(document.fonts)document.fonts.ready.then(()=>sim&&draw());
+
+syncInputs();changed();
+})();
+</script>
+</body>
+</html>
